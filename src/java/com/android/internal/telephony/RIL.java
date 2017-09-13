@@ -2953,10 +2953,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_STOP_LCE: ret = responseLceStatus(p); break;
             case RIL_REQUEST_PULL_LCEDATA: ret = responseLceData(p); break;
             case RIL_REQUEST_GET_ACTIVITY_INFO: ret = responseActivityData(p); break;
-            case RIL_REQUEST_GET_ADN_RECORD: ret =  responseInts(p); break;
-            case RIL_REQUEST_UPDATE_ADN_RECORD: ret =  responseInts(p); break;
             case RIL_REQUEST_SET_ALLOWED_CARRIERS: ret = responseInts(p); break;
             case RIL_REQUEST_GET_ALLOWED_CARRIERS: ret = responseCarrierIdentifiers(p); break;
+            case RIL_REQUEST_GET_ADN_RECORD: ret =  responseInts(p); break;
+            case RIL_REQUEST_UPDATE_ADN_RECORD: ret =  responseInts(p); break;
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
             //break;
@@ -3225,9 +3225,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_ON_SS: ret =  responseSsData(p); break;
             case RIL_UNSOL_STK_CC_ALPHA_NOTIFY: ret =  responseString(p); break;
             case RIL_UNSOL_LCEDATA_RECV: ret = responseLceData(p); break;
+            case RIL_UNSOL_PCO_DATA: ret = responsePcoData(p); break;
             case RIL_UNSOL_RESPONSE_ADN_RECORDS: ret = responseAdnRecords(p); break;
             case RIL_UNSOL_RESPONSE_ADN_INIT_DONE: ret = responseVoid(p); break;
-            case RIL_UNSOL_PCO_DATA: ret = responsePcoData(p); break;
 
             default:
                 throw new RuntimeException("Unrecognized unsol response: " + response);
@@ -3668,6 +3668,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     mLceInfoRegistrant.notifyRegistrant(new AsyncResult(null, ret, null));
                 }
                 break;
+            case RIL_UNSOL_PCO_DATA:
+                if (RILJ_LOGD) unsljLogRet(response, ret);
+
+                mPcoDataRegistrants.notifyRegistrants(new AsyncResult(null, ret, null));
+                break;
           case RIL_UNSOL_RESPONSE_ADN_INIT_DONE:
                 if (RILJ_LOGD) unsljLog(response);
 
@@ -3683,11 +3688,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     mAdnRecordsInfoRegistrants.notifyRegistrants(
                                             new AsyncResult(null, ret, null));
                 }
-                break;
-            case RIL_UNSOL_PCO_DATA:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                mPcoDataRegistrants.notifyRegistrants(new AsyncResult(null, ret, null));
                 break;
         }
     }
@@ -4744,9 +4744,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_ON_SS: return "UNSOL_ON_SS";
             case RIL_UNSOL_STK_CC_ALPHA_NOTIFY: return "UNSOL_STK_CC_ALPHA_NOTIFY";
             case RIL_UNSOL_LCEDATA_RECV: return "UNSOL_LCE_INFO_RECV";
+            case RIL_UNSOL_PCO_DATA: return "UNSOL_PCO_DATA";
             case RIL_UNSOL_RESPONSE_ADN_INIT_DONE: return "RIL_UNSOL_RESPONSE_ADN_INIT_DONE";
             case RIL_UNSOL_RESPONSE_ADN_RECORDS: return "RIL_UNSOL_RESPONSE_ADN_RECORDS";
-            case RIL_UNSOL_PCO_DATA: return "UNSOL_PCO_DATA";
             default: return "<unknown response>";
         }
     }
@@ -5399,6 +5399,16 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void
+    getAdnRecord(Message result) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_GET_ADN_RECORD, result);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        send(rr);
+    }
+
+    @Override
     public void setAllowedCarriers(List<CarrierIdentifier> carriers, Message response) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_SET_ALLOWED_CARRIERS, response);
         rr.mParcel.writeInt(carriers.size()); /* len_allowed_carriers */
@@ -5433,24 +5443,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void getAllowedCarriers(Message response) {
-        RILRequest rr = RILRequest.obtain(RIL_REQUEST_GET_ALLOWED_CARRIERS, response);
-        if (RILJ_LOGD) {
-            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
-        }
-        send(rr);
-    }
-
-    @Override
-    public void
-    getAdnRecord(Message result) {
-        RILRequest rr = RILRequest.obtain(RIL_REQUEST_GET_ADN_RECORD, result);
-
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
-        send(rr);
-    }
-
-    @Override
     public void
     updateAdnRecord(SimPhoneBookAdnRecord adnRecordInfo, Message result) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_UPDATE_ADN_RECORD, result);
@@ -5478,8 +5470,16 @@ public class RIL extends BaseCommands implements CommandsInterface {
         send(rr);
     }
 
+    @Override
+    public void getAllowedCarriers(Message response) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_GET_ALLOWED_CARRIERS, response);
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        }
+        send(rr);
+    }
+
     public boolean needsOldRilFeature(String feature) {
         return mOldRilFeatures.contains(feature);
     }
-
 }
